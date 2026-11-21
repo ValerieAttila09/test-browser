@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iframe Fullpage</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .outer-frame {
+      display: block;
+      inset: auto;
+      width: 720px;
+      height: 412px;
+      overflow-x: hidden;
+      overflow-y: scroll;
+      border-radius: 16px;
+      border: 2px solid #898989;
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      height: 100dvh;
+      border: none;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="outer-frame">
+    <iframe
+      id="target-frame"
+      src="http://localhost:8000/"
+      title="Embedded Content">
+    </iframe>
+  </div>
+
+  <script>
+    const iframe = document.getElementById('target-frame');
+
+    iframe.addEventListener('load', () => {
+      try {
+        const win = iframe.contentWindow;
+        const doc = iframe.contentDocument;
+        let fakeFullscreenElement = null;
+
+        // 1. Palsukan properti document.fullscreenElement
+        Object.defineProperty(doc, 'fullscreenElement', {
+          get: () => fakeFullscreenElement,
+          configurable: true
+        });
+
+        // 2. Palsukan requestFullscreen() agar selalu resolve tanpa memperbesar layar
+        win.Element.prototype.requestFullscreen = function () {
+          fakeFullscreenElement = this;
+          this.dispatchEvent(new win.Event('fullscreenchange', { bubbles: true }));
+          return win.Promise.resolve();
+        };
+
+        // 3. Palsukan exitFullscreen() agar tombol Exit tetap sinkron
+        doc.exitFullscreen = function () {
+          fakeFullscreenElement = null;
+          doc.dispatchEvent(new win.Event('fullscreenchange', { bubbles: true }));
+          return win.Promise.resolve();
+        };
+      } catch (err) {
+        console.error('Akses iframe diblokir (Cross-Origin):', err);
+      }
+    });
+  </script>
+</body>
+</html>
